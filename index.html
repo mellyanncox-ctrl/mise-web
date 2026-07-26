@@ -1576,49 +1576,49 @@ SCREENS.onboard = ({i=0}) => {
 };
 
 /* ============================================== 4/5. AUTH =============== */
-SCREENS.signin = () => `<div class="screen">
+SCREENS.signin = () => {
+  /* One screen, one button, both situations. Whether this becomes "attach to the
+     account already holding my recipes" or "sign in to the account that has
+     them" is decided by the server, not by asking her to self-diagnose — see
+     saveAccess(). Guessing from local state would get it wrong on an empty
+     device, which is exactly when she is most likely to be here. */
+  const anon = !(S.auth && S.auth.email);
+  return `<div class="screen">
   ${topbar({title:'Other devices'})}
   <div class="grow pad" style="padding-top:18px">
-    <h1 class="d2" style="max-width:14ch">Open this on your laptop too.</h1>
-    <p class="sm" style="margin:12px 0 30px;max-width:34ch">Your cookbook is already saved and backed up — you don’t need to do anything for that. Adding an email is only so a second device can open the same library, and so it comes back if this phone doesn’t.</p>
+    <h1 class="d2" style="max-width:15ch">Open this on your laptop too.</h1>
+    <p class="sm" style="margin:12px 0 26px;max-width:34ch">Your cookbook is already saved and backed up — you don’t need to do anything for that. This is only so a second device can open the same library, and so it comes back if this phone doesn’t.</p>
+
     <div class="field focus" style="border-bottom-color:var(--ink)">
       <label class="micro">Email</label>
       <input type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"
              data-auth="email" placeholder="you@example.com" data-autofocus aria-label="Your email address">
     </div>
+    ${anon?`<div class="field focus" style="border-bottom-color:var(--ink);margin-top:18px">
+      <label class="micro">Email again</label>
+      <input type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false"
+             data-auth="email2" placeholder="you@example.com" aria-label="Your email address again">
+    </div>`:''}
+    <div class="field focus" style="border-bottom-color:var(--ink);margin-top:18px">
+      <label class="micro">Password</label>
+      <input type="password" autocomplete="${anon?'new-password':'current-password'}" autocapitalize="off" spellcheck="false"
+             data-auth="pw" placeholder="At least 8 characters" aria-label="Password">
+    </div>
+    <button class="tbtn mutlink" data-reveal style="margin-top:10px;border-bottom:0;text-decoration:underline;text-underline-offset:3px">Show password</button>
+
     <div style="margin-top:26px">
-      <button class="btn" data-signin>Send me the link</button>
-      <p class="xs" style="margin-top:12px;max-width:36ch">No password, ever. Tap the link on the other device and this same library opens there.</p>
+      <button class="btn" data-signin>${anon?'Save access':'Sign in'}</button>
+      ${anon?`<p class="xs" style="margin-top:12px;max-width:36ch">Let your phone’s password manager generate and remember it. <strong style="color:var(--ink)">There is no reset email yet</strong> — if this password is lost, the copy in your account can’t be reached, so save it somewhere before you continue.</p>`
+            :`<p class="xs" style="margin-top:12px;max-width:36ch">The same library will open here.</p>`}
     </div>
   </div>
   <div class="pad" style="padding-bottom:26px;text-align:center">
     <button class="sm linky" data-guest>Not now</button>
   </div>
 </div>`;
+};
 
 SCREENS.signup = () => SCREENS.signin();
-
-SCREENS.checkmail = ({email}) => `<div class="screen">
-  ${topbar({title:'Check your email'})}
-  <div class="grow pad" style="padding-top:18px;display:flex;flex-direction:column">
-    <p class="micro">Sent to ${esc(email||'your inbox')}</p>
-    <h1 class="d2" style="margin-top:9px">Tap the link we just sent.</h1>
-    <p class="sm" style="margin:14px 0 0;max-width:33ch">Open it on the device you want your cookbook on — that is the device it opens on. Nothing changes here either way.</p>
-    <div class="figure" style="margin:30px 0">${FIG.cloudless}</div>
-    <div class="ix">
-      ${[['It has not arrived','Give it a minute, then check spam. The sender is Supabase.'],
-         ['Wrong address','Go back and send it again — nothing has been created yet.'],
-         ['Link says expired','They are single-use and short-lived. Just request another.']]
-        .map(([t,d])=>`<div class="ix-row" style="align-items:flex-start;padding:16px 0">
-          <span class="ix-b"><span class="ix-t">${t}</span>
-          <span class="ix-s" style="white-space:normal;margin-top:3px">${d}</span></span></div>`).join('')}
-    </div>
-  </div>
-  <div class="pad" style="padding-bottom:26px;display:flex;flex-direction:column;gap:10px">
-    <button class="btn ghost" data-back>Use a different email</button>
-    <button class="tbtn mutlink" data-guest style="align-self:center;border-bottom:0;text-decoration:underline;text-underline-offset:3px">Back to my cookbook</button>
-  </div>
-</div>`;
 
 /* ============================================ 6/7. LIBRARY ============== */
 function recipeTile(r,opts={}){
@@ -2891,7 +2891,7 @@ SCREENS.profile = ()=>{
       <span class="tb-act"><button class="iconbtn" data-go="prefs" aria-label="Preferences">${ic('edit',20)}</button></span>
     </header>
     <div class="pad" style="padding-top:4px">
-      <p class="micro">${(S.auth&&S.auth.email)?esc(S.auth.email):'Yours — no account, no password'}</p>
+      <p class="micro">${(S.auth&&S.auth.email)?esc(S.auth.email):'Yours — nothing to sign into'}</p>
       <div style="margin-top:8px">${syncDot()}</div>
       <h1 class="d1" style="margin-top:9px">${esc(S.prefs.name||'Your cookbook')}</h1>
     </div>
@@ -3702,7 +3702,7 @@ function onKey(e){
 function onClick(e){
   const el=e.target.closest('[data-back],[data-go],[data-dismiss],[data-tab],[data-retry],'+
     '[data-onb-multi],[data-onb-one],[data-onb-step],[data-onb-next],[data-onb-back],[data-onb-untag],[data-skip-onboard],'+
-    '[data-signin],[data-signup],[data-guest],[data-oauth],[data-magic],[data-signout],'+
+    '[data-signin],[data-signup],[data-guest],[data-oauth],[data-magic],[data-signout],[data-reveal],'+
     '[data-new-recipe],[data-new-recipe-in],[data-import],[data-recipe],[data-collection],[data-edit],[data-review],'+
     '[data-edit-sec],[data-add-ing],[data-del-ing],[data-add-group],[data-del-group],[data-add-step],[data-del-step],'+
     '[data-set],[data-toggle],[data-untag],[data-accent],[data-edit-photo],[data-edit-photo-cam],[data-remove-photo],'+
@@ -3758,10 +3758,28 @@ function onClick(e){
 
   /* ---- auth ---- */
   if(d.signin!==undefined||d.signup!==undefined||d.magic!==undefined){ stop();
-    const email=(($('[data-auth="email"]')||{}).value||'').trim();
+    const val=k=>((($('[data-auth="'+k+'"]')||{}).value)||'').trim();
+    const email=val('email'), email2El=$('[data-auth="email2"]'), pw=val('pw');
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('That email doesn’t look right.'); return; }
+    /* Typed twice on first setup, because the address is unverified: a typo here
+       is silent and permanent, and the failure only shows up on the day she
+       needs the library back. */
+    if(email2El && email2El.value.trim().toLowerCase() !== email.toLowerCase()){
+      toast('The two emails don’t match.'); return; }
+    if(pw.length < 8){ toast('Use at least 8 characters.'); return; }
     el.disabled=true;
-    sendMagicLink(email).then(sent=>{ el.disabled=false; if(sent) go('checkmail',{email}); });
+    saveAccess(email, pw).then(ok=>{
+      el.disabled=false;
+      if(!ok) return;
+      reset(S.onboarded?'library':'onboard', S.onboarded?{}:{i:0});
+      toast('Saved. Your cookbook will follow you.');
+    });
+    return; }
+  if(d.reveal!==undefined){ stop();
+    const f=$('[data-auth="pw"]'); if(!f) return;
+    const show = f.type==='password';
+    f.type = show?'text':'password';
+    el.textContent = show?'Hide password':'Show password';
     return; }
   if(d.oauth!==undefined){ stop();
     if(!sb){ toast('Not connected — you can keep working as a guest.'); return; }
@@ -3774,7 +3792,7 @@ function onClick(e){
      saved, because nothing about saving depended on that screen. */
   if(d.guest!==undefined){ stop(); reset(S.onboarded?'library':'onboard',S.onboarded?{}:{i:0}); return; }
   if(d.signout!==undefined){ stop(); confirmDialog({title:'Sign out?',
-    body:'Your library stays in your account and comes back when you open the link on any device. It is cleared from this one.',
+    body:'Your library stays in your account and comes back when you sign in with your email on any device. It is cleared from this one.',
     confirm:'Sign out',onConfirm:()=>{ doSignOut(); toast('Signed out.'); }}); return; }
 
   /* ---- opening things ---- */
@@ -4803,25 +4821,59 @@ function shrinkImage(dataUrl, maxEdge=1600, quality=0.82){
    account that library is already in — anything else would strand it under an
    account nobody can sign back into. On a second device, the same button is an
    ordinary sign-in. The difference is whether there is anything here to lose. */
-async function sendMagicLink(email){
+/* Neither a link nor a code — a password. The reasoning, so nobody undoes it:
+
+   iOS gives a home-screen web app its own storage, sealed off from Safari. An
+   emailed link therefore signs you in *in Safari*, and the installed app never
+   sees that session. Nothing in a web app can cross that boundary; handing a
+   link to an installed app needs Universal Links, which needs a native binary.
+   So the link flow was not fixable here.
+
+   The obvious replacement — a six-digit code typed inside the app — is blocked
+   by the project, not by the code: Supabase will not let you edit the email
+   templates without custom SMTP, so {{ .Token }} cannot be added to the magic
+   link email, and the default one is link-only. The send limit is also pinned
+   at 2/hour and greyed out for the same reason. Both unlock together if custom
+   SMTP is ever configured, at which point auth-email-passwordless is a clean
+   swap and this comment is the map back.
+
+   So: with "Confirm email" disabled at project level, updateUser({email,password})
+   attaches both to the account that already exists, sends nothing, and keeps the
+   same user id — which means the library does not move and there is no merge to
+   negotiate. That last property is why this is better than a code even when a
+   code becomes possible.
+
+   THE COST, stated because it is real: without SMTP there is no reset email. A
+   forgotten password means the copy in the account is unreachable (the device
+   copy is untouched and still exports). The screen says so plainly rather than
+   burying it. */
+async function saveAccess(email, password){
   if(!sb){ toast('Not connected right now — your cookbook is still saved here.'); return false; }
-  const redirect = location.origin + location.pathname;
-  const anon = S.auth && S.auth.mode==='account' && S.auth.anon;
-  const hasWork = S.recipes.length || S.drafts.length || S.collections.length;
-  if(anon && hasWork){
-    const { error } = await sb.auth.updateUser({ email }, { emailRedirectTo: redirect });
-    if(!error) return true;
-    const msg = (error.message||'').toLowerCase();
-    if(!(msg.includes('already') || msg.includes('registered') || msg.includes('exists'))){
-      toast(error.message||'Could not send the link.'); return false;
-    }
-    /* That email already has a cookbook. Fall through and sign into it — the
-       merge prompt in loadRemote decides what happens to what is here. */
+
+  /* Try to claim it for the account we are already in. If the address belongs to
+     an account elsewhere, this fails and we sign into that one instead — which
+     is the correct behaviour on a second device, and needs no question asked. */
+  const { error } = await sb.auth.updateUser({ email, password });
+  if(!error) return true;
+
+  const msg = (error.message||'').toLowerCase();
+  const taken = msg.includes('already') || msg.includes('registered') ||
+                msg.includes('exists')  || msg.includes('in use');
+  if(!taken){ toast(error.message||'Could not save that.'); return false; }
+
+  const { error: signInError } = await sb.auth.signInWithPassword({ email, password });
+  if(signInError){
+    const m=(signInError.message||'').toLowerCase();
+    toast(m.includes('credential')||m.includes('invalid')
+      ? 'That email already has a cookbook, but the password does not match it.'
+      : (signInError.message||'Could not sign in.'));
+    return false;
   }
-  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: redirect } });
-  if(error){ toast(error.message||'Could not send the link.'); return false; }
+  /* loadRemote() decides what happens to anything already on this device. It
+     asks before merging and never discards a side. */
   return true;
 }
+
 async function doSignOut(){
   loadedFor = null;
   if(sb) await sb.auth.signOut();
