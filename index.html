@@ -155,6 +155,43 @@ a{color:inherit}
 }
 
 
+/* ---------- reorderable steps ---------- */
+.steprow{
+  display:flex;gap:14px;align-items:flex-start;
+  padding:16px 0;border-bottom:1px solid var(--rule-soft);
+  background:var(--paper);
+  /* transform, not layout: the row can be dragged without reflowing the list */
+  will-change:transform;
+}
+.steprow.dragging{
+  position:relative;z-index:5;
+  box-shadow:0 10px 26px -12px rgba(46,42,34,.42);
+  border-bottom-color:transparent;cursor:grabbing;
+}
+.steprow.dropbefore{box-shadow:inset 0 2px 0 0 var(--ink)}
+.steprow.droplast{box-shadow:inset 0 -2px 0 0 var(--ink)}
+/* Step textareas sit outside .field, so they never picked up its resize:none and
+   have been rendering the native corner grabber all along — a stray dot beside
+   every step. data-grow already manages height, so the grabber was only ever
+   noise. Pre-existing; fixed here because this is the screen that made it
+   obvious. */
+.steprow textarea{resize:none}
+.grip{
+  width:34px;flex:0 0 auto;padding-top:4px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  color:var(--ink-30);cursor:grab;
+  /* Only the handle opts out of touch scrolling — dragging from anywhere else in
+     the row must still scroll the page. */
+  touch-action:none;
+  border-radius:3px;transition:color .18s var(--ease),background .18s var(--ease);
+}
+.grip .num{font-family:var(--display);font-size:13px;line-height:1}
+.grip-dots{opacity:0;transition:opacity .18s var(--ease)}
+.grip:hover,.grip:focus-visible{color:var(--ink);background:var(--cream)}
+.grip:hover .grip-dots,.grip:focus-visible .grip-dots{opacity:.55}
+.grip:active{cursor:grabbing}
+@media (hover:none){ .grip-dots{opacity:.4} }
+
 /* paper grain — barely there */
 #device::after{
   content:'';position:absolute;inset:0;pointer-events:none;z-index:60;
@@ -2255,13 +2292,21 @@ SCREENS.edit = () => {
     <p class="xs" style="margin-top:22px;max-width:36ch">Leave the quantity blank for things like “a handful of parsley”. ${BRANDS[S.brand].mark} won’t invent a number for you.</p>`;
   }
   function method(r){ return `
-    ${r.steps.length?r.steps.map((s,i)=>`
-      <div style="display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-bottom:1px solid var(--rule-soft)">
-        <span class="num" style="font-family:var(--display);font-size:13px;color:var(--ink-30);width:20px;padding-top:6px">${String(i+1).padStart(2,'0')}</span>
+    ${r.steps.length?`<div id="stepsList">${r.steps.map((s,i)=>`
+      <div class="steprow" data-steprow="${i}">
+        <!-- The number IS the handle. A separate grip plus up/down arrows would
+             be four controls in a 390px row; this costs no width and still
+             supports touch, mouse and keyboard. -->
+        <button class="grip" data-grip="${i}"
+          aria-label="Step ${i+1} of ${r.steps.length}. Drag to reorder, or use the up and down arrow keys.">
+          <span class="num">${String(i+1).padStart(2,'0')}</span>
+          <span class="grip-dots" aria-hidden="true">${ic('drag',13)}</span>
+        </button>
         <textarea data-grow data-fs="${i}" rows="1" placeholder="What happens now?" style="flex:1">${esc(s.text)}</textarea>
-        <button class="iconbtn" style="width:38px;height:38px;flex:0 0 auto" data-del-step="${i}" aria-label="Remove step">${ic('close',14)}</button>
-      </div>`).join(''):'<p class="sm" style="padding:16px 0 0">No steps yet.</p>'}
+        <button class="iconbtn" style="width:38px;height:38px;flex:0 0 auto" data-del-step="${i}" aria-label="Remove step ${i+1}">${ic('close',14)}</button>
+      </div>`).join('')}</div>`:'<p class="sm" style="padding:16px 0 0">No steps yet.</p>'}
     <button class="tbtn mutlink" data-add-step style="margin-top:16px">${ic('plus',14)} Add a step</button>
+    ${r.steps.length>1?`<p class="xs" style="margin-top:10px">Drag a number to reorder. Keyboard: focus a number and press ↑ or ↓.</p>`:''}
     <div class="rule" style="margin-top:26px"></div>
     <div style="margin-top:18px">
       <p class="micro" style="margin-bottom:8px">Shortcut</p>
@@ -3742,9 +3787,87 @@ function wireEvents(){
   document.addEventListener('input',onInput);
   document.addEventListener('keydown',onKey);
 }
+/* ==========================================================================
+   REORDERING STEPS
+
+   One primitive, three input methods. Drag (pointer events, so touch and mouse
+   are the same code path), arrow keys on the focused handle, and — because both
+   of those funnel through here — nothing else in the app needs to know how the
+   order changed.
+
+   `insertAt` is an insertion point in the ORIGINAL list, 0..length. That is what
+   a drop position naturally is, and it removes the classic off-by-one: after
+   splicing the row out, an insertion point past it has shifted down by one.
+   ========================================================================== */
+function moveStep(from, insertAt){
+  const R = S.ui.editing; if(!R) return -1;
+  if(from < 0 || from >= R.steps.length) return -1;
+  const to = insertAt > from ? insertAt - 1 : insertAt;
+  if(to === from || to < 0 || to >= R.steps.length) return -1;
+  const [row] = R.steps.splice(from, 1);
+  R.steps.splice(to, 0, row);
+  scheduleSave();
+  render(true);
+  /* Keep the handle under the finger/focus so a second move needs no re-aim. */
+  setTimeout(()=>{ const g=$('[data-grip="'+to+'"]'); if(g) g.focus(); }, 40);
+  return to;
+}
+
+function wireStepReorder(){
+  const list = document.getElementById('stepsList');
+  if(!list) return;
+  const rowsOf = () => [...list.querySelectorAll('[data-steprow]')];
+
+  let row=null, grip=null, from=-1, startY=0, centres=[], insertAt=-1;
+
+  const mark = (idx) => {
+    const rows = rowsOf();
+    rows.forEach(r=>r.classList.remove('dropbefore','droplast'));
+    if(idx<0 || idx===from || idx===from+1) return;      /* no visible change */
+    if(idx >= rows.length) rows[rows.length-1].classList.add('droplast');
+    else rows[idx].classList.add('dropbefore');
+  };
+  const cleanup = () => {
+    if(row){ row.classList.remove('dragging'); row.style.transform=''; }
+    rowsOf().forEach(r=>r.classList.remove('dropbefore','droplast'));
+    row=null; grip=null; from=-1; insertAt=-1; centres=[];
+  };
+
+  list.querySelectorAll('[data-grip]').forEach(g=>{
+    g.addEventListener('pointerdown', e=>{
+      if(e.button) return;                                /* left / touch only */
+      grip=g; row=g.closest('[data-steprow]'); from=num(row.dataset.steprow);
+      startY=e.clientY;
+      /* Captured once, before anything moves: the dragged row is translated, so
+         live rects would chase the pointer. */
+      centres = rowsOf().map(r=>{ const b=r.getBoundingClientRect(); return b.top + b.height/2; });
+      row.classList.add('dragging');
+      g.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    g.addEventListener('pointermove', e=>{
+      if(!row) return;
+      row.style.transform = 'translateY('+(e.clientY-startY)+'px)';
+      insertAt = centres.filter(c => c < e.clientY).length;
+      mark(insertAt);
+    });
+    const finish = () => { const f=from, at=insertAt; cleanup(); if(at>=0) moveStep(f, at); };
+    g.addEventListener('pointerup', finish);
+    g.addEventListener('pointercancel', cleanup);
+
+    /* The accessible path. Same primitive, so it cannot drift from the drag. */
+    g.addEventListener('keydown', e=>{
+      const i = num(g.dataset.grip);
+      if(e.key==='ArrowUp'){   e.preventDefault(); moveStep(i, i-1); }
+      if(e.key==='ArrowDown'){ e.preventDefault(); moveStep(i, i+2); }
+    });
+  });
+}
+
 function screenMounted(){
   syncTimerBar();
   if(S.route.name==='planner') wireDrag();
+  wireStepReorder();
 }
 function wireDrag(){
   let dragged=null;
