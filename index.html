@@ -154,6 +154,7 @@ a{color:inherit}
   input,textarea{-webkit-user-select:text;user-select:text}
 }
 
+
 /* paper grain — barely there */
 #device::after{
   content:'';position:absolute;inset:0;pointer-events:none;z-index:60;
@@ -482,6 +483,108 @@ input::placeholder,textarea::placeholder{color:var(--ink-30)}
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
     transition-duration:.001ms!important;scroll-behavior:auto!important}
 }
+
+/* ==========================================================================
+   DESKTOP — from 1000px up, stop pretending to be a phone.
+
+   Deliberately additive: one media query, no changes to the rules above it, no
+   JS and (almost) no markup. The phone layout is therefore untouched *by
+   construction* rather than by inspection — the only way to regress it is to
+   edit this block's min-width.
+
+   Three moves. Fill the window instead of a 402px mock. Turn the bottom tab bar
+   into a left rail, because a row of thumb targets across a 1440px screen is
+   nonsense. Cap the reading column while letting the library grid use the space,
+   since those two want opposite things from a wide window.
+   ========================================================================== */
+@media (min-width:1000px){
+  #stage{padding:0;background:var(--paper);align-items:stretch}
+  #device{
+    width:100%;height:100dvh;max-height:none;
+    border-radius:0;box-shadow:none;
+  }
+  #device::after{display:none}          /* the paper grain was for the mock */
+  #statusbar{display:none}              /* and so was the fake clock */
+
+  /* tab bar -> left rail */
+  #app{flex-direction:row}
+  #tabbar{
+    order:-1;flex:0 0 232px;
+    flex-direction:column;justify-content:flex-start;align-items:stretch;
+    gap:2px;padding:22px 14px 22px 18px;
+    border-top:0;border-right:1px solid var(--rule);
+  }
+  .tab{
+    flex:0 0 auto;height:auto;min-height:46px;
+    flex-direction:row;justify-content:flex-start;gap:14px;
+    padding:0 14px;border-radius:3px;
+    transition:background .18s var(--ease),color .18s var(--ease);
+  }
+  .tab .tl{font-size:9.5px;letter-spacing:.17em}
+  .tab:hover{background:var(--cream)}
+  .tab[aria-current="page"]{background:var(--cream)}
+  /* The add button is a circular thumb target on a phone. Here it is the
+     primary action, so it reads as one. */
+  .tab.add{order:-1;margin-bottom:18px;background:var(--ink);color:var(--paper);min-height:48px}
+  .tab.add:hover{background:var(--ink);opacity:.9}
+  .tab.add .knob{width:22px;height:22px;background:none;color:var(--paper)}
+  .tab.add .tl{font-size:11px;letter-spacing:.1em}
+  .tab-space{display:none}              /* nothing overlaps the bottom now */
+
+  /* content column: generous, but not a 1400px line of text */
+  :root{--pad:40px}
+  .screen{max-width:1060px;margin:0 auto;width:100%}
+  #view{scrollbar-width:thin}
+  #view::-webkit-scrollbar{display:block;width:10px}
+  #view::-webkit-scrollbar-thumb{background:var(--stone);border-radius:6px}
+  #view::-webkit-scrollbar-track{background:transparent}
+
+  /* the library can breathe */
+  .tilegrid{grid-template-columns:repeat(4,minmax(0,1fr));gap:34px 22px}
+  .r-tile .ph{aspect-ratio:1/1}
+  /* The feature card is a full-bleed 5:4 image on a phone. At 980px that is a
+     wall, so it becomes a wide banner with the text beside it instead. */
+  .ph.feat{aspect-ratio:16/7}
+  [data-recipe] > .ph.feat{max-height:340px}
+
+  /* The nav rail is hidden on a phone for full-screen routes like a recipe,
+     which is right there and wrong here: on a desktop, navigation disappearing
+     mid-task just strands you. */
+  #tabbar.hide{display:flex}
+
+  /* Hero images are full-bleed on a phone. On a wide screen an unbounded hero is
+     most of the viewport before a single word of the recipe. Cap it. */
+  .screen > div > figure.ph[style*="aspect-ratio"]{max-height:380px}
+  .screen > div > div > figure.ph[style*="aspect-ratio"]{max-height:380px}
+
+  /* a recipe reads better as two columns than one long scroll */
+  .pair{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:0 52px;align-items:start}
+  .pair > section{padding-top:34px}
+  .pair > section.pad{padding-left:0;padding-right:0}
+  .pair{padding-left:var(--pad);padding-right:var(--pad)}
+
+  /* forms and prose shouldn't stretch to the full column */
+  .field{max-width:520px}
+  .btn{max-width:340px}
+  /* Centred is right under a 402px form and wrong under a left-aligned one. */
+  .authfoot{text-align:left}
+  .topbar{min-height:60px}
+
+  /* hover states only make sense once there's a pointer */
+  .ix-row:hover{background:var(--cream)}
+  .iconbtn:hover{background:var(--cream)}
+}
+/* A phone in landscape is wide but short — it is still a phone. */
+@media (min-width:1000px) and (max-height:560px){
+  #app{flex-direction:column}
+  #tabbar{order:0;flex:0 0 auto;flex-direction:row;border-right:0;border-top:1px solid var(--rule);padding:0}
+  .tab{flex:1;flex-direction:column;gap:4px;height:var(--tab-h);padding:0}
+  .tab.add{order:0;margin-bottom:0;background:none;color:var(--ink)}
+  .tab.add .knob{width:34px;height:34px;background:var(--ink);color:var(--paper)}
+  .pair{display:block}
+}
+
+
 </style>
 <script type="module">
   /* Loaded as a module so the rest of the app can stay classic script. If this
@@ -912,7 +1015,11 @@ function renderTabs(){
   const bar=$('#tabbar');
   const show=SHOW_TABS.includes(S.route.name);
   bar.classList.toggle('hide',!show);
-  if(!show){ bar.innerHTML=''; return; }
+  /* The markup stays even when .hide is on. A phone hides the bar for immersive
+     routes like a recipe, which is right; the desktop layout un-hides the rail
+     with CSS, because navigation disappearing mid-task on a laptop just strands
+     you — and an empty rail is worse than no rail. Emptying it here made that
+     impossible to fix in CSS alone. */
   const cur=S.route.name==='collections'||S.route.name==='collection'?'library':
             (S.route.name==='shopping'||S.route.name==='pantry'?'planner':
             (S.route.name==='history'||S.route.name==='downloads'?'profile':S.route.name));
@@ -1497,6 +1604,10 @@ SCREENS.intro = () => `
     <div class="pad" style="padding-bottom:26px;display:flex;flex-direction:column;gap:14px">
       <button class="btn" data-go="onboard" data-p='{"i":0}'>Set up my cookbook</button>
       <button class="tbtn mutlink" data-skip-onboard style="align-self:center;border-bottom:0;text-decoration:underline;text-underline-offset:3px">Skip — take me straight in</button>
+      <!-- Without this there is no way to reach an existing cookbook from a
+           browser that has never run the app: the only route was Profile on a
+           library you cannot see yet. -->
+      <button class="tbtn mutlink" data-go="signin" data-p='{"mode":"in"}' style="align-self:center;border-bottom:0;text-decoration:underline;text-underline-offset:3px">Already have a cookbook? Sign in</button>
     </div>
   </div>`;
 
@@ -1576,43 +1687,52 @@ SCREENS.onboard = ({i=0}) => {
 };
 
 /* ============================================== 4/5. AUTH =============== */
-SCREENS.signin = () => {
-  /* One screen, one button, both situations. Whether this becomes "attach to the
-     account already holding my recipes" or "sign in to the account that has
-     them" is decided by the server, not by asking her to self-diagnose — see
-     saveAccess(). Guessing from local state would get it wrong on an empty
-     device, which is exactly when she is most likely to be here. */
-  const anon = !(S.auth && S.auth.email);
+SCREENS.signin = ({mode}={}) => {
+  /* Two jobs, one screen, and the mode comes from HOW YOU GOT HERE — which is a
+     far better signal than anything readable off this device. Arriving from
+     Profile means you are already using the app: set up. Arriving from the intro
+     link means you have a cookbook elsewhere: sign in. An earlier version
+     inferred it from whether the library was empty, which got it exactly
+     backwards on a new-but-empty install — the most likely case of all.
+     saveAccess() is forgiving either way; this only decides what it *says*. */
+  const setup = mode ? (mode === 'up') : true;
   return `<div class="screen">
-  ${topbar({title:'Other devices'})}
+  ${topbar({title: setup ? 'Set up access' : 'Sign in'})}
   <div class="grow pad" style="padding-top:18px">
-    <h1 class="d2" style="max-width:15ch">Open this on your laptop too.</h1>
-    <p class="sm" style="margin:12px 0 26px;max-width:34ch">Your cookbook is already saved and backed up — you don’t need to do anything for that. This is only so a second device can open the same library, and so it comes back if this phone doesn’t.</p>
+    <h1 class="d2" style="max-width:15ch">${setup ? 'Open this on your laptop too.' : 'Welcome back.'}</h1>
+    <p class="sm" style="margin:12px 0 26px;max-width:34ch">${setup
+      ? 'Your cookbook is already saved and backed up — you don’t need to do anything for that. This is only so a second device can open the same library, and so it comes back if this phone doesn’t.'
+      : 'Enter the email and password you set up, and your library opens here.'}</p>
 
     <div class="field focus" style="border-bottom-color:var(--ink)">
       <label class="micro">Email</label>
       <input type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"
              data-auth="email" placeholder="you@example.com" data-autofocus aria-label="Your email address">
     </div>
-    ${anon?`<div class="field focus" style="border-bottom-color:var(--ink);margin-top:18px">
+    ${setup?`<div class="field focus" style="border-bottom-color:var(--ink);margin-top:18px">
       <label class="micro">Email again</label>
       <input type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false"
              data-auth="email2" placeholder="you@example.com" aria-label="Your email address again">
     </div>`:''}
     <div class="field focus" style="border-bottom-color:var(--ink);margin-top:18px">
       <label class="micro">Password</label>
-      <input type="password" autocomplete="${anon?'new-password':'current-password'}" autocapitalize="off" spellcheck="false"
-             data-auth="pw" placeholder="At least 8 characters" aria-label="Password">
+      <input type="password" autocomplete="${setup?'new-password':'current-password'}" autocapitalize="off" spellcheck="false"
+             data-auth="pw" placeholder="${setup?'At least 8 characters':'Your password'}" aria-label="Password">
     </div>
     <button class="tbtn mutlink" data-reveal style="margin-top:10px;border-bottom:0;text-decoration:underline;text-underline-offset:3px">Show password</button>
 
     <div style="margin-top:26px">
-      <button class="btn" data-signin>${anon?'Save access':'Sign in'}</button>
-      ${anon?`<p class="xs" style="margin-top:12px;max-width:36ch">Let your phone’s password manager generate and remember it. <strong style="color:var(--ink)">There is no reset email yet</strong> — if this password is lost, the copy in your account can’t be reached, so save it somewhere before you continue.</p>`
-            :`<p class="xs" style="margin-top:12px;max-width:36ch">The same library will open here.</p>`}
+      <button class="btn" data-signin>${setup?'Save access':'Sign in'}</button>
+      ${setup?`<p class="xs" style="margin-top:12px;max-width:36ch">Let your password manager generate and remember it. <strong style="color:var(--ink)">There is no reset email yet</strong> — if this password is lost, the copy in your account can’t be reached, so save it somewhere before you continue.</p>`
+             :`<p class="xs" style="margin-top:12px;max-width:36ch">Anything already on this device is kept — you’ll be asked before the two libraries are merged.</p>`}
     </div>
+
+    <button class="tbtn mutlink" data-go="signin" data-p='{"mode":"${setup?'in':'up'}"}'
+      style="margin-top:22px;border-bottom:0;text-decoration:underline;text-underline-offset:3px">${setup
+        ? 'I already set this up — sign me in'
+        : 'I haven’t set this up yet'}</button>
   </div>
-  <div class="pad" style="padding-bottom:26px;text-align:center">
+  <div class="pad authfoot" style="padding-bottom:26px;text-align:center">
     <button class="sm linky" data-guest>Not now</button>
   </div>
 </div>`;
@@ -1924,6 +2044,9 @@ SCREENS.recipe = ({id}) => {
       </div>
     </div>
 
+    <!-- On a wide screen these two read side by side; on a phone they stack.
+         Wrapped rather than styled in place because a grid needs a parent. -->
+    <div class="pair">
     <!-- INGREDIENTS -->
     <section class="sect pad" id="ings">
       <div class="sect-head"><p class="micro">Ingredients</p>
@@ -1957,6 +2080,7 @@ SCREENS.recipe = ({id}) => {
       </ol>`:`<p class="sm" style="margin:0 0 14px">No method written yet.</p>
         <button class="tbtn" data-edit="${r.id}">Write the method ${ic('chev',14,1.6)}</button>`}
     </section>
+    </div>
 
     ${r.notes?`<section class="sect pad">
       <div class="sect-head"><p class="micro">Your notes</p></div>
@@ -2904,7 +3028,7 @@ SCREENS.profile = ()=>{
           :syncSettled
             ?'It survives closing the app. It does not yet survive losing the phone — add an email when you have a minute and it will.'
             :'It survives closing the app. Checking whether it is backed up too.'}</p>
-        ${syncSettled?'<button class="btn sm" data-go="signin" style="width:auto">Add an email</button>':''}
+        ${syncSettled?`<button class="btn sm" data-go="signin" data-p='{"mode":"up"}' style="width:auto">Add an email</button>`:''}
       </div></div>`}
 
     <div class="pad sect">
@@ -3766,6 +3890,9 @@ function onClick(e){
        needs the library back. */
     if(email2El && email2El.value.trim().toLowerCase() !== email.toLowerCase()){
       toast('The two emails don’t match.'); return; }
+    /* Sign-in mode has no second field, and that is correct: the address is
+       already attached to an account, so a typo fails loudly instead of
+       silently. */
     if(pw.length < 8){ toast('Use at least 8 characters.'); return; }
     el.disabled=true;
     saveAccess(email, pw).then(ok=>{

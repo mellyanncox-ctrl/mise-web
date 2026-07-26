@@ -49,16 +49,24 @@ async function boot({emailTaken=false, rightPw='hunter2hunter2', remoteState=nul
   await enter(pg);
   return {b,pg};
 }
-// The intro only shows when `onboarded` is false, and that flag is not part of
-// the restored slice — so after a reload it may or may not appear. Tolerate both.
+// Getting past the intro is fiddly for two reasons. `onboarded` is not part of
+// the restored state slice, so the intro may or may not reappear after a reload.
+// And since the desktop rail change, the tab elements exist in the DOM on EVERY
+// route — so "a profile tab exists" no longer means "we are in the app", and any
+// check written that way silently skips the intro and then fails downstream.
+// Poll for the intro copy instead, and only give up after it has had time to show.
 async function enter(pg){
-  await pg.waitForFunction(()=>/take me straight in/.test(document.body.innerText)
-    || !!document.querySelector('button.tab[data-tab="profile"]'), {timeout:12000});
-  if(await pg.evaluate(()=>/take me straight in/.test(document.body.innerText))){
-    await pg.evaluate(()=>{const e=[...document.querySelectorAll('button,a,[role="button"]')].find(x=>/take me straight in/i.test(x.textContent||''));e&&e.click()});
+  for(let i=0;i<20;i++){
+    if(await pg.evaluate(()=>/take me straight in/.test(document.body.innerText))){
+      await pg.evaluate(()=>{const e=[...document.querySelectorAll('button,a,[role="button"]')].find(x=>/take me straight in/i.test(x.textContent||''));e&&e.click()});
+      await pg.waitForTimeout(450);
+      return;
+    }
+    if(await pg.evaluate(()=>/YOUR LIBRARY|Your recipes|recipes\./i.test(document.body.innerText))) return;
+    await pg.waitForTimeout(200);
   }
-  await pg.waitForTimeout(450);
 }
+
 async function toAccess(pg){
   await pg.evaluate(()=>document.querySelector('button.tab[data-tab="profile"]').click());
   await pg.waitForTimeout(250);
