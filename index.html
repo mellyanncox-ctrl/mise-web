@@ -1471,7 +1471,6 @@ SCREENS.intro = () => `
   <div class="screen">
     <div class="pad" style="padding-top:34px;display:flex;justify-content:space-between;align-items:center">
       <span class="wordmark">${BRANDS[S.brand].mark}</span>
-      <button class="micro" data-go="signin" style="min-height:44px;padding:0 2px">Sign in</button>
     </div>
     <div class="grow pad" style="display:flex;flex-direction:column;justify-content:center;padding-top:26px;padding-bottom:12px">
       <h1 class="d1" style="max-width:11ch">A cookbook with nothing in it.</h1>
@@ -1570,22 +1569,22 @@ SCREENS.onboard = ({i=0}) => {
 
 /* ============================================== 4/5. AUTH =============== */
 SCREENS.signin = () => `<div class="screen">
-  ${topbar({title:'Sign in'})}
+  ${topbar({title:'Other devices'})}
   <div class="grow pad" style="padding-top:18px">
-    <h1 class="d2">Keep it, properly.</h1>
-    <p class="sm" style="margin:12px 0 30px;max-width:33ch">An account backs your library up, syncs it between your phone and your laptop, and keeps your photos out of this page. It stays private to you either way.</p>
+    <h1 class="d2" style="max-width:14ch">Open this on your laptop too.</h1>
+    <p class="sm" style="margin:12px 0 30px;max-width:34ch">Your cookbook is already saved and backed up — you don’t need to do anything for that. Adding an email is only so a second device can open the same library, and so it comes back if this phone doesn’t.</p>
     <div class="field focus" style="border-bottom-color:var(--ink)">
       <label class="micro">Email</label>
       <input type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false"
              data-auth="email" placeholder="you@example.com" data-autofocus aria-label="Your email address">
     </div>
     <div style="margin-top:26px">
-      <button class="btn" data-signin>Email me a sign-in link</button>
-      <p class="xs" style="margin-top:12px;max-width:36ch">No password to invent or forget. We send a link; tapping it signs you in on that device.</p>
+      <button class="btn" data-signin>Send me the link</button>
+      <p class="xs" style="margin-top:12px;max-width:36ch">No password, ever. Tap the link on the other device and this same library opens there.</p>
     </div>
   </div>
   <div class="pad" style="padding-bottom:26px;text-align:center">
-    <button class="sm linky" data-guest>Keep using it without an account</button>
+    <button class="sm linky" data-guest>Not now</button>
   </div>
 </div>`;
 
@@ -1596,7 +1595,7 @@ SCREENS.checkmail = ({email}) => `<div class="screen">
   <div class="grow pad" style="padding-top:18px;display:flex;flex-direction:column">
     <p class="micro">Sent to ${esc(email||'your inbox')}</p>
     <h1 class="d2" style="margin-top:9px">Tap the link we just sent.</h1>
-    <p class="sm" style="margin:14px 0 0;max-width:33ch">It signs you in on whichever device you open it on — so if you want this on your phone, open the email there.</p>
+    <p class="sm" style="margin:14px 0 0;max-width:33ch">Open it on the device you want your cookbook on — that is the device it opens on. Nothing changes here either way.</p>
     <div class="figure" style="margin:30px 0">${FIG.cloudless}</div>
     <div class="ix">
       ${[['It has not arrived','Give it a minute, then check spam. The sender is Supabase.'],
@@ -1609,7 +1608,7 @@ SCREENS.checkmail = ({email}) => `<div class="screen">
   </div>
   <div class="pad" style="padding-bottom:26px;display:flex;flex-direction:column;gap:10px">
     <button class="btn ghost" data-back>Use a different email</button>
-    <button class="tbtn mutlink" data-guest style="align-self:center;border-bottom:0;text-decoration:underline;text-underline-offset:3px">Carry on without an account</button>
+    <button class="tbtn mutlink" data-guest style="align-self:center;border-bottom:0;text-decoration:underline;text-underline-offset:3px">Back to my cookbook</button>
   </div>
 </div>`;
 
@@ -2878,17 +2877,19 @@ SCREENS.profile = ()=>{
       <span class="tb-act"><button class="iconbtn" data-go="prefs" aria-label="Preferences">${ic('edit',20)}</button></span>
     </header>
     <div class="pad" style="padding-top:4px">
-      <p class="micro">${S.auth&&S.auth.mode==='account'?esc(S.auth.email):'Guest — nothing is backed up'}</p>
+      <p class="micro">${(S.auth&&S.auth.email)?esc(S.auth.email):'Yours — no account, no password'}</p>
       <div style="margin-top:8px">${syncDot()}</div>
       <h1 class="d1" style="margin-top:9px">${esc(S.prefs.name||'Your cookbook')}</h1>
     </div>
 
-    ${(!S.auth||S.auth.mode==='guest')?`<div class="pad" style="padding-top:22px">
+    ${(S.auth&&S.auth.email)?'':`<div class="pad" style="padding-top:22px">
       <div style="padding:18px 20px;background:var(--cream);border-radius:2px">
-        <p class="d5">Everything is on this device only.</p>
-        <p class="sm" style="margin:8px 0 14px">Refresh this page and it is gone. Sign in and your library is backed up and follows you between devices — everything you have already added comes with you.</p>
-        <button class="btn sm" data-go="signin" style="width:auto">Sign in with a link</button>
-      </div></div>`:''}
+        <p class="d5">${S.auth&&S.auth.mode==='account'?'Saved here, backed up quietly.':'Saved on this device.'}</p>
+        <p class="sm" style="margin:8px 0 14px">${S.auth&&S.auth.mode==='account'
+          ?'Nothing to sign into. If you ever want it open on a laptop as well — or want it back if this phone goes missing — add an email and it follows you.'
+          :'It survives closing the app. It does not yet survive losing the phone — add an email when you have a minute and it will.'}</p>
+        <button class="btn sm" data-go="signin" style="width:auto">Add an email</button>
+      </div></div>`}
 
     <div class="pad sect">
       <div style="display:flex;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)">
@@ -2934,7 +2935,7 @@ SCREENS.profile = ()=>{
       <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)">
         <span class="ix-t">Night mode</span>
         <button class="switch" role="switch" aria-checked="${S.theme==='night'}" data-theme-toggle aria-label="Night mode"></button></div>
-      ${S.auth&&S.auth.mode==='account'?`<button class="tbtn mutlink" data-signout style="margin-top:18px">Sign out</button>`:''}
+      ${S.auth&&S.auth.email?`<button class="tbtn mutlink" data-signout style="margin-top:18px">Sign out</button>`:''}
     </div>
     <div class="tab-space"></div></div>`;
 };
@@ -3753,10 +3754,11 @@ function onClick(e){
       .then(({error})=>{ if(error) toast(error.message||'That provider isn’t enabled on the project yet.'); });
     return; }
 
-  if(d.guest!==undefined){ stop(); S.auth={mode:'guest'}; reset(S.onboarded?'library':'onboard',S.onboarded?{}:{i:0});
-    toast('Exploring as a guest. Nothing leaves this device.'); return; }
+  /* "Not now" — go back to the cookbook. It does not change how anything is
+     saved, because nothing about saving depended on that screen. */
+  if(d.guest!==undefined){ stop(); reset(S.onboarded?'library':'onboard',S.onboarded?{}:{i:0}); return; }
   if(d.signout!==undefined){ stop(); confirmDialog({title:'Sign out?',
-    body:'Your library stays in your account and comes back when you sign in. It is cleared from this device.',
+    body:'Your library stays in your account and comes back when you open the link on any device. It is cleared from this one.',
     confirm:'Sign out',onConfirm:()=>{ doSignOut(); toast('Signed out.'); }}); return; }
 
   /* ---- opening things ---- */
@@ -4467,6 +4469,57 @@ const SYNC_KEYS = ['prefs','recipes','drafts','collections','imports','planner',
                    'pantry','history','household','shares','foodMemory','healthLog',
                    'brand','theme','onboarded'];
 
+/* ==========================================================================
+   LOCAL PERSISTENCE — the app must survive a refresh with no account at all.
+   IndexedDB rather than localStorage: a photographed library is tens of
+   megabytes and localStorage caps out around five. This runs unconditionally,
+   before and regardless of any network, so closing the app is never a loss.
+   ========================================================================== */
+const LOCAL_DB='mise-local', LOCAL_STORE='state';
+let localDbP=null;
+function localDb(){
+  if(localDbP) return localDbP;
+  localDbP = new Promise((res,rej)=>{
+    if(!('indexedDB' in window)) return rej(new Error('no indexeddb'));
+    const rq=indexedDB.open(LOCAL_DB,1);
+    rq.onupgradeneeded=()=>{ if(!rq.result.objectStoreNames.contains(LOCAL_STORE)) rq.result.createObjectStore(LOCAL_STORE); };
+    rq.onsuccess=()=>res(rq.result);
+    rq.onerror=()=>rej(rq.error);
+  }).catch(e=>{ console.warn('[mise] no local database', e); return null; });
+  return localDbP;
+}
+async function localSave(){
+  const db=await localDb(); if(!db) return;
+  const payload={}; SYNC_KEYS.forEach(k=>payload[k]=S[k]);
+  /* Which account this device copy belongs to, so a later load can tell
+     "my own data coming back" from "a different library". */
+  payload.__account = (S.auth && S.auth.id) || null;
+  try{
+    await new Promise((res,rej)=>{
+      const tx=db.transaction(LOCAL_STORE,'readwrite');
+      tx.objectStore(LOCAL_STORE).put(payload,'state');
+      tx.oncomplete=res; tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error);
+    });
+  }catch(e){ console.warn('[mise] local save failed', e); }
+}
+async function localLoad(){
+  const db=await localDb(); if(!db) return null;
+  try{
+    return await new Promise((res,rej)=>{
+      const tx=db.transaction(LOCAL_STORE,'readonly');
+      const rq=tx.objectStore(LOCAL_STORE).get('state');
+      rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>rej(rq.error);
+    });
+  }catch(e){ return null; }
+}
+let localTimer=null, localReady=false;
+/* Nothing may be written back until the restore has been attempted, or the
+   first render of an empty app would overwrite a real library with nothing. */
+function scheduleLocalSave(){ if(!localReady) return; clearTimeout(localTimer); localTimer=setTimeout(localSave, 400); }
+/* A phone can be closed mid-keystroke. Flush on the way out. */
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') localSave(); });
+window.addEventListener('pagehide', localSave);
+
 function setSync(status, detail){
   S.sync = {status, detail: detail||'', at: Date.now()};
   const el = document.getElementById('syncdot');
@@ -4475,11 +4528,11 @@ function setSync(status, detail){
 function syncDot(){
   const s = (S.sync&&S.sync.status)||'off';
   const map = {
-    off:    ['Not signed in',        'var(--ink-30)'],
-    loading:['Loading your library', 'var(--clay)'],
-    saving: ['Saving',               'var(--clay)'],
-    saved:  ['Saved',                'var(--olive)'],
-    error:  [(S.sync&&S.sync.detail)||'Sync problem', 'var(--clay-ink)'],
+    off:    ['Saved on this device',  'var(--ink-45)'],
+    loading:['Opening your library',  'var(--clay)'],
+    saving: ['Saving',                'var(--clay)'],
+    saved:  ['Saved',                 'var(--olive)'],
+    error:  [(S.sync&&S.sync.detail)||'Saved here, not backed up', 'var(--clay-ink)'],
     offline:['Offline — saved on this device', 'var(--ink-45)'],
   };
   const [label,colour] = map[s]||map.off;
@@ -4504,23 +4557,54 @@ async function initSync(){
     auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, flowType:'pkce' },
   });
   sb.auth.onAuthStateChange((event, session)=>{
-    if(event==='SIGNED_IN' && session){ onSignedIn(session); }
+    if(event==='SIGNED_IN' && session){
+      /* Fires for the silent anonymous claim too, and again for the session we
+         just handled by hand. Neither deserves an announcement. */
+      const known = S.auth && S.auth.id === session.user.id;
+      onSignedIn(session, known || !!session.user.is_anonymous);
+    }
+    if(event==='USER_UPDATED' && session && session.user.email){
+      S.auth = Object.assign({}, S.auth, {email: session.user.email, anon:false});
+      render(true); toast('Email added. Your cookbook will follow you.');
+    }
     if(event==='SIGNED_OUT'){ S.auth={mode:'guest'}; setSync('off'); }
   });
   const { data:{ session } } = await sb.auth.getSession();
-  if(session) await onSignedIn(session, true);
-  else setSync('off');
+  if(session){ await onSignedIn(session, true); return sb; }
+
+  /* No session, and no sign-in screen to send anyone to. Claim an anonymous
+     one silently: a real user row with a real JWT, so row-level security still
+     applies and the library is backed up — it just has no email on it yet and
+     nothing to remember. An email can be attached later from Profile, which
+     upgrades this same account rather than starting a second one.
+     If anonymous sign-in is off, or the network is down, the app carries on
+     against the device copy. That path is not an error, so it isn't reported
+     as one. */
+  try{
+    const { data, error } = await sb.auth.signInAnonymously();
+    if(error) throw error;
+    if(data && data.session) await onSignedIn(data.session, true);
+    else setSync('off');
+  }catch(e){
+    console.info('[mise] running on this device only —', e && e.message);
+    S.auth = {mode:'guest'};
+    setSync('off');
+  }
   return sb;
 }
 
+let loadedFor = null;
 async function onSignedIn(session, quiet){
-  S.auth = {mode:'account', email: session.user.email, id: session.user.id};
+  S.auth = {mode:'account', email: session.user.email||'', id: session.user.id,
+            anon: !!session.user.is_anonymous};
   /* Strip the auth fragment so a refresh doesn't try to re-consume the link. */
   if(location.hash.includes('access_token')||location.search.includes('code=')){
     history.replaceState({}, '', location.pathname);
   }
+  if(loadedFor === session.user.id){ setSync('saved'); return; }
+  loadedFor = session.user.id;
   await loadRemote();
-  if(!quiet) toast('Signed in. Your library is backed up.');
+  if(!quiet) toast('This is your cookbook, on this device too.');
 }
 
 /* ---- read ---- */
@@ -4531,10 +4615,17 @@ async function loadRemote(){
     const { data, error } = await sb.from('app_state').select('state,revision').maybeSingle();
     if(error) throw error;
     const localHasWork = S.recipes.length || S.drafts.length || S.collections.length;
+    const sameAccount = S.localAccount && S.localAccount === S.auth.id;
     if(data && data.state && Object.keys(data.state).length){
+      if(localHasWork && sameAccount){
+        /* Our own copy coming back to us. Union both sides and say nothing —
+           there is no decision here for anyone to make. */
+        mergeState(data.state); render(); scheduleSave();
+        await resolveImages(); setSync('saved'); render(true); return;
+      }
       if(localHasWork){
-        /* Signed in on a device that already has unsaved work. Never silently
-           discard either side — ask. */
+        /* A different library, on a device that already has work of its own.
+           Never silently discard either side — ask. */
         const remote = data.state;
         setSync('saved');
         confirmDialog({
@@ -4591,6 +4682,9 @@ function mergeState(remote){
 /* ---- write ---- */
 let saveTimer = null, saveInFlight = false, saveAgain = false;
 function scheduleSave(){
+  /* The device copy is the one that must never fail, so it is written first
+     and unconditionally. The backup is best-effort on top of it. */
+  scheduleLocalSave();
   if(!sb || !S.auth || S.auth.mode!=='account') return;
   clearTimeout(saveTimer);
   setSync('saving');
@@ -4677,19 +4771,39 @@ function shrinkImage(dataUrl, maxEdge=1600, quality=0.82){
 }
 
 /* ---- auth actions ---- */
+/* Two different things wear the same button.
+   On the device that already holds the library, the email is *attached* to the
+   account that library is already in — anything else would strand it under an
+   account nobody can sign back into. On a second device, the same button is an
+   ordinary sign-in. The difference is whether there is anything here to lose. */
 async function sendMagicLink(email){
-  if(!sb){ toast('Not connected — you can keep working as a guest.'); return false; }
+  if(!sb){ toast('Not connected right now — your cookbook is still saved here.'); return false; }
   const redirect = location.origin + location.pathname;
+  const anon = S.auth && S.auth.mode==='account' && S.auth.anon;
+  const hasWork = S.recipes.length || S.drafts.length || S.collections.length;
+  if(anon && hasWork){
+    const { error } = await sb.auth.updateUser({ email }, { emailRedirectTo: redirect });
+    if(!error) return true;
+    const msg = (error.message||'').toLowerCase();
+    if(!(msg.includes('already') || msg.includes('registered') || msg.includes('exists'))){
+      toast(error.message||'Could not send the link.'); return false;
+    }
+    /* That email already has a cookbook. Fall through and sign into it — the
+       merge prompt in loadRemote decides what happens to what is here. */
+  }
   const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: redirect } });
   if(error){ toast(error.message||'Could not send the link.'); return false; }
   return true;
 }
 async function doSignOut(){
+  loadedFor = null;
   if(sb) await sb.auth.signOut();
   S.auth = {mode:'guest'};
   SYNC_KEYS.forEach(k=>{ if(Array.isArray(S[k])) S[k]=[]; });
-  S.planner={}; S.foodMemory={}; S.prefs=newPrefsDefaults(); S.onboarded=true;
+  S.planner={}; S.foodMemory={}; S.prefs=newPrefsDefaults(); S.onboarded=false;
+  await localSave();                       /* the device copy goes too */
   setSync('off'); reset('intro');
+  if(sb) initSync();                       /* and a fresh empty one begins */
 }
 
 /* ==========================================================================
@@ -4717,7 +4831,9 @@ function tickClock(){
   el.textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
 }
 
-function boot(){
+async function boot(){
+  /* Asserted against the shipped defaults, before anything of the user's is
+     restored. What the app comes with is still nothing. */
   assertNoSeedContent();
   tickClock(); setInterval(tickClock,20000);
   S.online=navigator.onLine!==false;
@@ -4725,15 +4841,27 @@ function boot(){
   window.addEventListener('offline',()=>{S.online=false;render(true)});
   $('#view').addEventListener('scroll',onScroll,{passive:true});
   wireEvents();
-  render();
-  /* Connect in the background. A returning session lands the user straight in
-     their library; everyone else gets the intro on the usual timer. */
+  render();                                   /* splash, immediately */
+
   const returning = location.hash.includes('access_token') || location.search.includes('code=');
+
+  /* The device copy first — it is local, it is fast, and it is the one that is
+     always there. The network is never on the critical path to your own food. */
+  const saved = await localLoad();
+  if(saved){
+    S.localAccount = saved.__account || null;
+    applyState(saved);
+  }
+  localReady = true;
+
+  if(S.onboarded){ reset('library'); }
+  else setTimeout(()=>{ if(S.route.name==='splash' && !returning) replace('intro'); },1400);
+
+  /* Then, quietly, the backup. Nothing above waited for it. */
   initSync().then(()=>{
-    if(S.auth && S.auth.mode==='account'){ S.onboarded=true; reset('library'); }
-    else if(S.route.name==='splash') replace('intro');
+    if(S.onboarded && (S.route.name==='splash'||S.route.name==='intro')) reset('library');
+    else render(true);
   });
-  setTimeout(()=>{ if(S.route.name==='splash' && !returning) replace('intro'); },1800);
 }
 document.addEventListener('DOMContentLoaded',boot);
 </script>
